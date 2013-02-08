@@ -71,14 +71,14 @@ class TemplateMgr
         }
 
         // load global language variables e.g. "de" for "deDE"
-        $res = $sDB->exec("SELECT * FROM `localization` WHERE `loc_language` = '".mysql_real_escape_string(substr($lang, 0, 2))."';");
+        $res = $sDB->execLocalization("SELECT * FROM `localization` WHERE `loc_language` = '".mysql_real_escape_string(substr($lang, 0, 2))."';");
         while($row = mysql_fetch_object($res))
         {
             $this->LANG_SET[$row->loc_key] = $row->loc_val;
         }
 
         // load country specific overrides
-        $res = $sDB->exec("SELECT * FROM `localization` WHERE `loc_language` = '".mysql_real_escape_string($lang)."';");
+        $res = $sDB->execLocalization("SELECT * FROM `localization` WHERE `loc_language` = '".mysql_real_escape_string($lang)."';");
         while($row = mysql_fetch_object($res))
         {
             $this->LANG_SET[$row->loc_key] = $row->loc_val;
@@ -120,6 +120,16 @@ class TemplateMgr
     public function getTemplateRootAbs()
     {
         return TEMPLATE_ROOT_ABS;
+    }
+
+    public function getSponsorLogosRoot()
+    {
+        return SPONSOR_LOGOS;
+    }
+
+    public function getSponsorLogosRootAbs()
+    {
+        return SPONSOR_LOGOS_ABS;
     }
 
     public function getStringNumber($key, $search = false, $replace = false, $number = -1)

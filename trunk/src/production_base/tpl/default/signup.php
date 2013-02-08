@@ -50,7 +50,7 @@ $language   = $sTemplate->getLangBase();
       <div class = "row">
         <div class = "label"><? echo $sTemplate->getString("SIGNUP_USERNAME"); ?></div>
         <div class = "input">
-          <input type = "text" id = "signup_username" name = "signup_username"></input>
+          <input type = "text" id = "signup_username" name = "signup_username" value = "<? echo $sRequest->getStringPlain("signup_username"); ?>"></input>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ $language   = $sTemplate->getLangBase();
       <div class = "row">
         <div class = "label"><? echo $sTemplate->getString("SIGNUP_EMAIL"); ?></div>
         <div class = "input">
-          <input type = "text" id = "signup_email" name = "signup_email"></input>
+          <input type = "text" id = "signup_email" name = "signup_email" value = "<? echo $sRequest->getStringPlain("signup_email"); ?>"></input>
         </div>
       </div>
 
@@ -103,7 +103,7 @@ $language   = $sTemplate->getLangBase();
       </div>
 
       <div class = "row row_submit">
-        <span class = "button_blue" onclick = "wikiarguments.passRequest(); return false;"><? echo $sTemplate->getString("LOGIN_FORGOT_PASSWORD"); ?></span>
+        <span class = "button_blue" onclick = "wikiargument.passRequest(); return false;"><? echo $sTemplate->getString("LOGIN_FORGOT_PASSWORD"); ?></span>
         <button class = "button_blue" onclick = "$('#form_login').submit();"><? echo $sTemplate->getString("LOGIN_SUBMIT"); ?></button>
       </div>
 

@@ -99,12 +99,34 @@ class SqlMgr
     }
 
     /*
+    * Wrapper for querys against localization table.
+    */
+    public function execLocalization($qry)
+    {
+        return $this->exec($qry, DATABASE_LOCALIZATION);
+    }
+
+    /*
+    * Wrapper for querys against users table.
+    */
+    public function execUsers($qry)
+    {
+        return $this->exec($qry, DATABASE_USERS);
+    }
+
+    /*
      * execute mysql query
     */
-    function exec($qry)
+    function exec($qry, $database = DATABASE_DEFAULT)
     {
         $tm = new Timer();
         $tm->start();
+
+        if(in_array($database, getGlobalTables()))
+        {
+            mysql_select_db(MYSQL_NAME_GLOBAL);
+        }
+
         if($this->check_injections($qry)) return NULL;
         $this->res = mysql_query($qry);
         if($this->res == NULL)
@@ -117,6 +139,11 @@ class SqlMgr
             {
             }
             return false;
+        }
+
+        if(in_array($database, getGlobalTables()))
+        {
+            mysql_select_db(MYSQL_NAME);
         }
 
         $tm->stop();

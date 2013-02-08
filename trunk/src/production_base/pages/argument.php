@@ -36,21 +36,13 @@ class PageArgument extends Page
 {
     public function PageArgument($row)
     {
-        global $sDB, $sRequest, $sStatistics, $sTemplate;
+        global $sDB, $sRequest, $sStatistics, $sTemplate, $sUser;
         parent::Page($row);
 
         $questionTitle  = $sRequest->getString("title");
         $this->question = false;
         $this->view     = VIEW_ARGUMENT;
         $argumentTitle  = $sRequest->getString("argument");
-
-        if($sRequest->getInt("vote_select"))
-        {
-            $vote       = $sRequest->getInt("vote");
-            $questionId = $sRequest->getInt("questionId");
-            $argumentId = $sRequest->getInt("argumentId");
-            $sStatistics->vote($questionId, $argumentId, $vote);
-        }
 
         $res = $sDB->exec("SELECT * FROM `questions` WHERE `url` = '".mysql_real_escape_string($questionTitle)."' LIMIT 1;");
         while($row = mysql_fetch_object($res))
@@ -77,12 +69,48 @@ class PageArgument extends Page
             $sTemplate->error($sTemplate->getString("ERROR_INVALID_ARGUMENT"));
         }
 
+        if($sRequest->getInt("vote_select"))
+        {
+            if($this->question->group() && $this->question->group()->getPermission($sUser, ACTION_VOTE) == PERMISSION_DISALLOWED)
+            {
+            }else
+            {
+                $vote       = $sRequest->getInt("vote");
+                $questionId = $sRequest->getInt("questionId");
+                $argumentId = $sRequest->getInt("argumentId");
+                $sStatistics->vote($this->question, $argumentId, $vote);
+
+                //header("Location: ".$this->argument->url($this->question->url())."#argument_wrapper_".$questionId."_".$argumentId);
+                header("Location: ".$this->argument->url($this->question->url()));
+                exit;
+            }
+        }
+
         $this->setShortUrl($this->argument->shortUrl());
     }
 
     public function getQuestion()
     {
         return $this->question;
+    }
+
+    public function canView()
+    {
+        global $sUser, $sTemplate;
+
+        if(!$this->question)
+        {
+            $this->setError($sTemplate->getString("ERROR_INVALID_ARGUMENT"));
+            return false;
+        }
+
+        if($this->question->group() && $this->question->group()->getPermission($sUser, ACTION_VIEW_GROUP) == PERMISSION_DISALLOWED)
+        {
+            $this->setError($sTemplate->getString("ERROR_GROUP_INSUFFICIENT_RIGHTS"));
+            return false;
+        }
+
+        return true;
     }
 
     public function getView()

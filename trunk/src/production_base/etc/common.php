@@ -120,14 +120,26 @@ class Timer
 /*
 * valid usernames are alphanumeric and contain no badwords
 */
-function isValidUsername($user_name)
+function isValidUsername($userName)
 {
     global $sDB;
-    if(preg_match("/[^\\w-_!§\$%&\\(\\)\\[\\]{}*#\\|öäüÖÄÜáàâéèêíìîóòôúùû]/i", $user_name)) return false;
+
+    if($userName == "")
+    {
+        return false;
+    }
+
+    mb_internal_encoding("UTF-8");
+    if(mb_strlen($userName) > USERNAME_MAX_LEN)
+    {
+        return false;
+    }
+
+    if(preg_match("/[^\\w-_!§\$%&\\(\\)\\[\\]{}*#\\|öäüÖÄÜáàâéèêíìîóòôúùû]/i", $userName)) return false;
     $res = $sDB->exec("SELECT * FROM `badwords` WHERE `category` IN (".BADWORD_CATEGORY_ALL.", ".BADWORD_CATEGORY_USERNAME.");");
     while($row = mysql_fetch_object($res))
     {
-        if(preg_match("/".$row->word."/i", $user_name))
+        if(preg_match("/".$row->word."/i", $userName))
         {
             return false;
         }
@@ -169,11 +181,79 @@ function validateFaction($faction, $redirect = true)
 {
     global $sTemplate;
 
-    if(!in_array($faction, Array(ARGUMENT_PRO, ARGUMENT_CON)))
+    if(!in_array($faction, Array(FACTION_PRO, FACTION_CON, FACTION_NONE)))
     {
         if($redirect)
         {
             $sTemplate->error($sTemplate->getString("ERROR_INVALID_FACTION"));
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+function validateVote($vote, $redirect = true)
+{
+    global $sTemplate;
+
+    if(!in_array($faction, Array(VOTE_UP, VOTE_DN, VOTE_NONE)))
+    {
+        if($redirect)
+        {
+            $sTemplate->error($sTemplate->getString("ERROR_INVALID_VOTE"));
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+function validateGroupPermissions($permissions, $redirect = true)
+{
+    global $sTemplate;
+
+    if($permissions < 1 || $permissions > 7)
+    {
+        if($redirect)
+        {
+            $sTemplate->error($sTemplate->getString("ERROR_INVALID_PERMISSIONS"));
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+function validateQuestionType($type, $redirect = true)
+{
+    global $sTemplate;
+
+    if(!in_array($type, Array(QUESTION_TYPE_LISTED, QUESTION_TYPE_UNLISTED)))
+    {
+        if($redirect)
+        {
+            $sTemplate->error($sTemplate->getString("ERROR_INVALID_QUESTION_TYPE"));
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+function validateQuestionFlags($flags, $redirect = true)
+{
+    global $sTemplate;
+
+    if($flags < 0 || $flags > 2)
+    {
+        if($redirect)
+        {
+            $sTemplate->error($sTemplate->getString("ERROR_INVALID_QUESTION_FLAGS"));
         }
 
         return false;

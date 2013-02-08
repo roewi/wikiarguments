@@ -52,7 +52,7 @@ echo drawArgumentBoxFull($sPage->getQuestion(), $sPage->getArgument(), $sPage->b
 
   <div class = 'argument_container'>
 <?
-echo drawCounterArguments($sPage->getArgument(), $sPage->basePath());
+echo drawCounterArguments($sPage->getQuestion(), $sPage->getArgument(), $sPage->basePath());
 ?>
   </div>
 

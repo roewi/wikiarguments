@@ -41,7 +41,8 @@ class PermissionsMgr
                                ACTION_NEW_ARGUMENT          => PERMISSION_ALLOWED,
                                ACTION_NEW_COUNTER_ARGUMENT  => PERMISSION_ALLOWED,
                                ACTION_LOGIN                 => PERMISSION_ALLOWED,
-                               ACTION_VOTE                  => PERMISSION_ALLOWED);
+                               ACTION_VOTE                  => PERMISSION_ALLOWED,
+                               ACTION_NEW_GROUP             => PERMISSION_ALLOWED);
     }
 
     public function getPermission(User $user, $action)

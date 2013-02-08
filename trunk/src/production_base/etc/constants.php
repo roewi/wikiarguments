@@ -43,6 +43,9 @@ define("VIEW_NEW_ARGUMENT",             3);
 define("VIEW_NEW_COUNTER_ARGUMENT",     4);
 define("VIEW_NEW_QUESTION",             5);
 define("VIEW_SIGNUP",                   6);
+define("VIEW_NEW_GROUP",                7);
+define("VIEW_EDIT_ARGUMENT",            8);
+define("VIEW_EDIT_COUNTER_ARGUMENT",    9);
 
 define("BADWORD_CATEGORY_ALL",          0);
 define("BADWORD_CATEGORY_USERNAME",     1);
@@ -77,7 +80,26 @@ define("ACTION_NEW_ARGUMENT",           "new_argument");
 define("ACTION_NEW_COUNTER_ARGUMENT",   "new_counter_argument");
 define("ACTION_LOGIN",                  "login");
 define("ACTION_VOTE",                   "vote");
+define("ACTION_NEW_GROUP",              "new_group");
+define("ACTION_VIEW_GROUP",             "view_group");
+define("ACTION_VIEW_QUESTION",          "view_question");
 
 define("PERMISSION_ALLOWED",            1);
 define("PERMISSION_DISALLOWED",         -1);
+
+define("VISIBILITY_PUBLIC",             1);
+define("VISIBILITY_PRIVATE",            2);
+
+define("GROUP_PERMISSION_QUESTIONS",    1);
+define("GROUP_PERMISSION_ARGUMENTS",    2);
+define("GROUP_PERMISSION_ADMIN",        4);
+
+define("QUESTION_TYPE_LISTED",          0);
+define("QUESTION_TYPE_UNLISTED",        1);
+
+define("QUESTION_FLAG_PART_ALL",        2);
+
+define("DATABASE_DEFAULT",              0);
+define("DATABASE_USERS",                1);
+define("DATABASE_LOCALIZATION",         2);
 ?>

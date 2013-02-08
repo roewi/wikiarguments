@@ -52,7 +52,7 @@ class NotificationMgr
 
     private function sendMail($to, $prefix, $subject, $message)
     {
-        send_mail_from("alerts@wikiarguments.net", "alerts@wikiarguments.net", $to,  "[".$prefix."]".$subject, $message);
+        send_mail_from("alerts@wikiargument.net", "alerts@wikiargument.net", $to,  "[".$prefix."]".$subject, $message);
     }
 };
 ?>

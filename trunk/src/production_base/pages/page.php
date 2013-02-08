@@ -39,11 +39,25 @@ class Page
 {
     public function Page($row)
     {
+        global $sRequest, $sUser;
+
         $this->templateFile = $row->templateFile;
         $this->pageTitle    = $row->pageTitle;
         $this->error        = "";
         $this->notice       = "";
         $this->shortUrl     = "";
+        $this->groupId      = 0;
+        $this->group        = NULL;
+
+        if($sRequest->getString("group"))
+        {
+            $group = new Group(-1, false, $sRequest->getString("group"));
+            if($group->groupId())
+            {
+                $this->groupId  = $group->groupId();
+                $this->group    = $group;
+            }
+        }
     }
 
     /*
@@ -103,10 +117,27 @@ class Page
         return $this->pageTitle;
     }
 
+    public function groupId()
+    {
+        return $this->groupId;
+    }
+
+    public function group()
+    {
+        return $this->group;
+    }
+
+    public function getQuestion()
+    {
+        return false;
+    }
+
     protected $templateFile;
     protected $pageTitle;
     protected $error;
     protected $notice;
     protected $shortUrl;
+    protected $groupId;
+    protected $group;
 }
 ?>

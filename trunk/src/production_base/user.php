@@ -39,6 +39,9 @@ class User
         $this->isLoggedIn   = false;
         $this->userId       = 0;
         $this->voteData     = 0;
+        $this->groups       = NULL;
+        $this->ownGroups    = NULL;
+        $this->adminGroups  = NULL;
     }
 
     public function create($username, $email, $password, $sendConfirmation = true, $group = USER_GROUP_DEFAULT_SIGNUP)
@@ -49,8 +52,8 @@ class User
         $passwordHash = crypt($password, '$6$rounds=5000$'.$salt.'$');
         $dateAdded    = time();
 
-        $sDB->exec("INSERT INTO `users` (`userId`, `userName`, `email`, `group`, `password`, `salt`, `dateAdded`) VALUES
-                                        (NULL, '".mysql_real_escape_string($username)."', '".mysql_real_escape_string($email)."', '".i($group)."', '".mysql_real_escape_string($passwordHash)."', '".mysql_real_escape_string($salt)."', '".i($dateAdded)."');");
+        $sDB->execUsers("INSERT INTO `users` (`userId`, `userName`, `email`, `group`, `password`, `salt`, `dateAdded`) VALUES
+                                             (NULL, '".mysql_real_escape_string($username)."', '".mysql_real_escape_string($email)."', '".i($group)."', '".mysql_real_escape_string($passwordHash)."', '".mysql_real_escape_string($salt)."', '".i($dateAdded)."');");
 
         if(mysql_affected_rows())
         {
@@ -90,7 +93,7 @@ class User
     {
         global $sDB, $sSession;
 
-        $res = $sDB->exec("SELECT * FROM `users` WHERE `userId` = '".i($userId)."' LIMIT 1;");
+        $res = $sDB->execUsers("SELECT * FROM `users` WHERE `userId` = '".i($userId)."' LIMIT 1;");
         if(!mysql_num_rows($res))
         {
             return false;
@@ -165,6 +168,23 @@ class User
     {
         global $sDB;
 
+        if(!$this->isLoggedIn())
+        {
+            // check if a vote state exists in the user's cookie
+            $factionData = $_COOKIE['factionData'];
+            if($factionData)
+            {
+                $factionData = unserialize($factionData);
+                if(is_array($factionData) && $factionData[$questionId])
+                {
+                    validateFaction($factionData[$questionId]);
+                    return $factionData[$questionId];
+                }
+                return FACTION_NONE;
+            }
+            return FACTION_NONE;
+        }
+
         $res = $sDB->exec("SELECT * FROM `user_factions` WHERE `userId` = '".i($this->getUserId())."' AND `questionId` = '".i($questionId)."' LIMIT 1;");
         while($row = mysql_fetch_object($res))
         {
@@ -178,17 +198,68 @@ class User
     {
         global $sDB, $sStatistics;
 
+        validateFaction($faction);
+
         if($this->getFactionByQuestionId($questionId) == $faction)
         {
             return;
         }
 
-        $sDB->exec("DELETE FROM `user_factions` WHERE `userId` = '".$this->getUserId()."' AND `questionId` = '".i($questionId)."';");
+        $question = new Question($questionId);
 
-        $res = $sDB->exec("SELECT * FROM `user_votes` WHERE `userId` = '".i($this->getUserId())."' AND `questionId` = '".i($questionId)."' AND `argumentId` != 0;");
-        while($row = mysql_fetch_object($res))
+        if($this->isLoggedIn())
         {
-            $sStatistics->vote($questionId, $row->argumentId, VOTE_NONE, $this, true);
+            $sDB->exec("DELETE FROM `user_factions` WHERE `userId` = '".$this->getUserId()."' AND `questionId` = '".i($questionId)."';");
+
+            $res = $sDB->exec("SELECT * FROM `user_votes` WHERE `userId` = '".i($this->getUserId())."' AND `questionId` = '".i($questionId)."' AND `argumentId` != 0;");
+            while($row = mysql_fetch_object($res))
+            {
+                $sStatistics->vote($question, $row->argumentId, VOTE_NONE, $this, true);
+            }
+        }else
+        {
+            $oldFaction  = FACTION_NONE;
+            $factionData = $_COOKIE['factionData'];
+            if($factionData)
+            {
+                $factionData = unserialize($factionData);
+                if(is_array($factionData) && $factionData[$questionId])
+                {
+                    validateFaction($factionData[$questionId]);
+                    $oldFaction = $factionData[$questionId];
+                }
+            }
+
+            // remove old faction
+            if($oldFaction != FACTION_NONE)
+            {
+                $sDB->exec("DELETE FROM `user_factions` WHERE `userId` = '".$this->getUserId()."' AND `questionId` = '".i($questionId)."' AND `state` = '".$oldFaction."';");
+
+                unset($factionData[$questionId]);
+            }
+
+            // check if a vote state exists in the user's cookie
+            $cookieData = $_COOKIE['voteData'];
+            if($cookieData)
+            {
+                $cookieData = unserialize($cookieData);
+                if(is_array($cookieData) && is_array($cookieData[$questionId]))
+                {
+                    foreach($cookieData[$questionId] as $k => $v)
+                    {
+                        validateVote($v);
+                        $sStatistics->vote($question, $k, VOTE_NONE, $this, true);
+                    }
+                    unset($cookieData[$questionId]);
+                }
+                setcookie("voteData", serialize($cookieData));
+            }
+
+            if($faction != FACTION_NONE)
+            {
+                $factionData[$questionId] = $faction;
+            }
+            setcookie("factionData", serialize($factionData));
         }
 
         if($faction == FACTION_NONE)
@@ -213,8 +284,25 @@ class User
     public function getVoteState($questionId, $argumentId)
     {
         global $sDB;
-        if(!$this->userId)
+        /*if(!$this->userId)
         {
+            return VOTE_NONE;
+        }*/
+
+        if(!$this->isLoggedIn())
+        {
+            // check if a vote state exists in the user's cookie
+            $cookieData = $_COOKIE['voteData'];
+            if($cookieData)
+            {
+                $cookieData = unserialize($cookieData);
+                if(is_array($cookieData) && $cookieData[$questionId] && $cookieData[$questionId][$argumentId])
+                {
+                    validateVote($cookieData[$questionId][$argumentId]);
+                    return $cookieData[$questionId][$argumentId];
+                }
+                return VOTE_NONE;
+            }
             return VOTE_NONE;
         }
 
@@ -287,7 +375,7 @@ class User
         {
             $this->password = $passwordHashNew;
 
-            $sDB->exec("UPDATE `users` SET `password` = '".mysql_real_escape_string($passwordHashNew)."' WHERE `userId` = '".i($this->userId)."' LIMIT 1;");
+            $sDB->execUsers("UPDATE `users` SET `password` = '".mysql_real_escape_string($passwordHashNew)."' WHERE `userId` = '".i($this->userId)."' LIMIT 1;");
 
             return true;
         }
@@ -299,7 +387,7 @@ class User
     {
         global $sDB;
 
-        $sDB->exec("UPDATE `users` SET `group` = '".i($group)."' WHERE `userId` = '".i($this->userId)."' LIMIT 1;");
+        $sDB->execUsers("UPDATE `users` SET `group` = '".i($group)."' WHERE `userId` = '".i($this->userId)."' LIMIT 1;");
         return true;
     }
 
@@ -370,6 +458,80 @@ class User
         $mail->sendmail();
     }
 
+    /*
+    * Returns all groups that the user is currenetly enlisted in.
+    */
+    public function groups()
+    {
+        global $sDB;
+
+        if($this->groups)
+        {
+            return $this->groups;
+        }
+        $this->groups = Array();
+
+        $res = $sDB->exec("SELECT * FROM `user_groups` WHERE `userId` = '".i($this->userId)."';");
+        while($row = mysql_fetch_object($res))
+        {
+            array_push($this->groups, new Group($row->groupId, $row));
+        }
+
+        return $this->groups;
+    }
+
+    /*
+    * Returns all groups that the user owns.
+    * This array might contain groups that are not contained in User::groups.
+    */
+    public function ownGroups()
+    {
+        global $sDB;
+
+        if($this->ownGroups)
+        {
+            return $this->ownGroups;
+        }
+        $this->ownGroups = Array();
+
+        $res = $sDB->exec("SELECT * FROM `groups` WHERE `ownerId` = '".i($this->userId)."';");
+        while($row = mysql_fetch_object($res))
+        {
+            array_push($this->ownGroups, new Group($row->groupId, $row));
+        }
+
+        return $this->ownGroups;
+    }
+
+    /*
+    * Returns all groups on which the user has admin rights.
+    */
+    public function adminGroups()
+    {
+        global $sDB;
+
+        if($this->adminGroups)
+        {
+            return $this->adminGroups;
+        }
+        $this->adminGroups = Array();
+
+        $res = $sDB->exec("SELECT * FROM `groups` WHERE `ownerId` = '".i($this->userId)."';");
+        while($row = mysql_fetch_object($res))
+        {
+            array_push($this->adminGroups, new Group($row->groupId, $row));
+        }
+
+        $res = $sDB->exec("SELECT `groupId` FROM `group_permissions` WHERE `userId` = '".i($this->userId)."' AND
+                                                                     `permission` & ".GROUP_PERMISSION_ADMIN.";");
+        while($row = mysql_fetch_object($res))
+        {
+            array_push($this->adminGroups, new Group($row->groupId));
+        }
+
+        return $this->adminGroups;
+    }
+
     private $isLoggedIn;
     private $userId;
     private $userName;
@@ -378,6 +540,9 @@ class User
     private $salt;
     private $dateAdded;
     private $group;
+    private $groups;
+    private $ownGroups;
+    private $adminGroups;
 
     private $voteData;
     private $scoreQuestions;

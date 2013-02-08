@@ -47,6 +47,7 @@ class Question
         $this->questionId     = $row->questionId;
         $this->title          = $row->title;
         $this->url            = $row->url;
+        $this->urlPlain       = $row->url;
         $this->details        = $row->details;
         $this->dateAdded      = $row->dateAdded;
         $this->userId         = $row->userId;
@@ -56,6 +57,23 @@ class Question
         $this->scoreTop       = $row->scoreTop;
         $this->additionalData = unserialize($row->additionalData);
         $this->timeSince      = timeSinceString($row->dateAdded);
+        $this->groupId        = $row->groupId;
+        $this->group          = NULL;
+        if($this->groupId)
+        {
+            $this->group = new Group($this->groupId);
+        }
+        $this->type           = $row->type;
+        $this->flags          = $row->flags;
+
+        if($this->hasFlag(QUESTION_FLAG_PART_ALL))
+        {
+            $this->url = "unregistered/".$this->url;
+        }
+        if($this->type == QUESTION_TYPE_UNLISTED)
+        {
+            $this->url = "unlisted/".$this->url;
+        }
 
         $this->arguments = -1;
         $this->tags      = -1;
@@ -64,6 +82,16 @@ class Question
     public function questionId()
     {
         return $this->questionId;
+    }
+
+    public function titlePlain()
+    {
+        return $this->title;
+    }
+
+    public function detailsPlain()
+    {
+        return $this->details;
     }
 
     public function title()
@@ -107,9 +135,20 @@ class Question
         return $this->timeSince;
     }
 
+    public function urlPart()
+    {
+        return $this->urlPlain;
+    }
+
     public function url()
     {
         global $sTemplate;
+
+        if($this->groupId())
+        {
+            return $sTemplate->getRoot()."groups/".$this->group->url()."/".$this->url."/";
+        }
+
         return $sTemplate->getRoot().$this->url."/";
     }
 
@@ -164,7 +203,7 @@ class Question
 
             while($row = mysql_fetch_object($res))
             {
-                array_push($this->tags, strtolower($row->tag));
+                array_push($this->tags, mb_strtolower($row->tag));
             }
         }
 
@@ -261,6 +300,62 @@ class Question
         return $num;
     }
 
+    public function groupId()
+    {
+        return $this->groupId;
+    }
+
+    public function group()
+    {
+        return $this->group;
+    }
+
+    public function type()
+    {
+        return $this->type;
+    }
+
+    public function hasFlag($f)
+    {
+        return $this->flags & $f;
+    }
+
+    public function flags()
+    {
+        return $this->flags;
+    }
+
+    /*
+    * Returns true iff $user can edit this question.
+    */
+    public function canEdit(User $user)
+    {
+        if($this->authorId() != $user->getUserId())
+        {
+            return false;
+        }
+
+        if($this->dateAdded() <= time() - QUESTION_EDIT_INTERVAL)
+        {
+            return false;
+        }
+
+        if(count($this->arguments()))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /*
+    * Return time left for edit in minutes
+    */
+    public function timeLeftEdit()
+    {
+        return ceil((QUESTION_EDIT_INTERVAL - time() + $this->dateAdded()) / 60);
+    }
+
     private $questionId;
     private $title;
     private $details;
@@ -270,6 +365,12 @@ class Question
     private $score;
     private $timeSince;
     private $additionalData;
+    private $groupId;
+    private $group;
+    private $type;
+    private $flags;
+    private $url;
+    private $urlPlain;
 
     private $percPro;
     private $percCon;

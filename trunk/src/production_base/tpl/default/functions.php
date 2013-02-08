@@ -32,7 +32,7 @@
  * thereof with code not governed by the terms of the CPAL.
  *******************************************************************************/
 
-function voteUp($css, $questionId, $argumentId, $type = ARGUMENT_INDEF)
+function voteUp($css, $questionId, $argumentId, $argumentType = ARGUMENT_INDEF, $questionType = QUESTION_TYPE_LISTED, $questionFlags = 0)
 {
     global $sUser, $sTemplate;
     $canVote  = true;
@@ -40,20 +40,21 @@ function voteUp($css, $questionId, $argumentId, $type = ARGUMENT_INDEF)
     $id       = "voteup_".$questionId."_".$argumentId;
     $onSubmit = "";
 
-    if(!$sUser->isLoggedIn())
+    if(!$sUser->isLoggedIn() &&
+       ($questionType != QUESTION_TYPE_UNLISTED || !($questionFlags & QUESTION_FLAG_PART_ALL)))
     {
         $canVote  = false;
-        $onSubmit = "wikiarguments.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_LOGGED_IN")."\"); return false;";
+        $onSubmit = "wikiargument.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_LOGGED_IN")."\"); return false;";
     }
 
     if($argumentId && $canVote)
     {
         $faction = $sUser->getFactionByQuestionId($questionId);
 
-        if($faction != $type)
+        if($faction != $argumentType)
         {
             $canVote  = false;
-            $onSubmit = "wikiarguments.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_CHECKED_IN")."\"); return false;";
+            $onSubmit = "wikiargument.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_CHECKED_IN")."\"); return false;";
         }
     }
 
@@ -75,7 +76,7 @@ function voteUp($css, $questionId, $argumentId, $type = ARGUMENT_INDEF)
     return $ret;
 }
 
-function voteDn($css, $questionId, $argumentId, $type = ARGUMENT_INDEF)
+function voteDn($css, $questionId, $argumentId, $argumentType = ARGUMENT_INDEF, $questionType = QUESTION_TYPE_LISTED, $questionFlags = 0)
 {
     global $sUser, $sTemplate;
     $canVote  = true;
@@ -83,20 +84,21 @@ function voteDn($css, $questionId, $argumentId, $type = ARGUMENT_INDEF)
     $id       = "votedn_".$questionId."_".$argumentId;
     $onSubmit = "";
 
-    if(!$sUser->isLoggedIn())
+    if(!$sUser->isLoggedIn() &&
+       ($questionType != QUESTION_TYPE_UNLISTED || !($questionFlags & QUESTION_FLAG_PART_ALL)))
     {
         $canVote  = false;
-        $onSubmit = "wikiarguments.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_LOGGED_IN")."\"); return false;";
+        $onSubmit = "wikiargument.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_LOGGED_IN")."\"); return false;";
     }
 
     if($argumentId && $canVote)
     {
         $faction = $sUser->getFactionByQuestionId($questionId);
 
-        if($faction != $type)
+        if($faction != $argumentType)
         {
             $canVote  = false;
-            $onSubmit = "wikiarguments.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_CHECKED_IN")."\"); return false;";
+            $onSubmit = "wikiargument.raiseError(\"".$sTemplate->getString("NOTICE_VOTE_NOT_CHECKED_IN")."\"); return false;";
         }
     }
 
@@ -120,7 +122,7 @@ function voteDn($css, $questionId, $argumentId, $type = ARGUMENT_INDEF)
 
 function drawQuestionBoxRaw(Question $q, $tabs = "", $appendDetails = false, $appendTags = true)
 {
-    global $sTemplate;
+    global $sTemplate, $sPage, $sUser;
 
     $ret = "";
 
@@ -133,12 +135,12 @@ function drawQuestionBoxRaw(Question $q, $tabs = "", $appendDetails = false, $ap
     $numArguments = $q->numArguments();
 
     $ret .= '
-<div class = "question'.($tabs ? ' question_no_margin' : '').'">
+<div class = "question'.($tabs ? ' question_no_margin' : '').'" id = "question_'.$q->questionId().'">
   <div class = "stats question_stats">
     <div class = "points question_points">'.$numPoints.'</div>
     <div class = "points_text question_points_text">'.$sTemplate->getStringNumber("QUESTION_POINTS", Array(), Array(), $numPoints).'</div>
-    '.voteUp('question_vote_up', $q->questionId(), 0).'
-    '.voteDn('question_vote_dn', $q->questionId(), 0).'
+    '.voteUp('question_vote_up', $q->questionId(), 0, ARGUMENT_INDEF, $q->type(), $q->flags()).'
+    '.voteDn('question_vote_dn', $q->questionId(), 0, ARGUMENT_INDEF, $q->type(), $q->flags()).'
   </div>
   <div class = "question_title"><p><a href = "'.$q->url().'">'.$q->title().'</a></p></div>
   <div class = "question_num_arguments">
@@ -146,42 +148,41 @@ function drawQuestionBoxRaw(Question $q, $tabs = "", $appendDetails = false, $ap
     '.$sTemplate->getString("QUESTION_ARGUMENTS", Array("[NUM_ARGUMENTS]"), Array($numArguments)).'
   </div>';
 
-  if($appendDetails)
-  {
-      $ret .= '
+    if($appendDetails)
+    {
+        $ret .= '
   <div class = "question_details">'.$q->details().'</div>
       ';
-  }
+    }
 
-  $ret .= '
-  <div class = "author question_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($q->timeSince(), $q->authorLink())).'</div>
-  <div class = "tags"><ul>
-  ';
+    if($q->canEdit($sUser))
+    {
+        $ret .= '<div class = "author question_author"><a href = "'.$q->url().'edit/">'.$sTemplate->getString("QUESTION_EDIT", Array("[TIMELEFT]"), Array($q->timeLeftEdit())).'</a></div>';
+    }else
+    {
+        $ret .= '<div class = "author question_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($q->timeSince(), $q->authorLink())).'</div>';
+    }
 
-  if($appendTags)
-  {
-      $tags = $q->tags();
-      foreach($tags as $k => $v)
-      {
-          $ret .= '<li class = "tag"><a href = "'.$sTemplate->getRoot().'tags/trending/'.$v.'/">'.$v.'</a></li>';
-      }
-  }
+    $ret .= '<div class = "tags"><ul>';
 
-  $ret .= '
-  </ul></div>';
+    if($appendTags)
+    {
+        $tags = $q->tags();
+        foreach($tags as $k => $v)
+        {
+            if($sPage->group() && $sPage->group()->url())
+            {
+                $ret .= '<li class = "tag"><a href = "'.$sTemplate->getRoot().'groups/'.$sPage->group()->url().'/tags/trending/'.$v.'/">'.$v.'</a></li>';
+            }else
+            {
+                $ret .= '<li class = "tag"><a href = "'.$sTemplate->getRoot().'tags/trending/'.$v.'/">'.$v.'</a></li>';
+            }
+        }
+    }
 
-  /*$ret .= '
-  <div class = "question_options"><span class="options_text">
-    '.$sTemplate->getString("QUESTION_OPTIONS").'</span>
+    $ret .= '</ul></div>';
 
-    <div class = "hidden">
-      <div class = "icon_twitter"></div> '.$sTemplate->getString("SHARE_TWITTER").'<br />
-      <div class = "icon_fb"></div> '.$sTemplate->getString("SHARE_FACEBOOK").'<br />
-      <div class = "icon_spam"></div> '.$sTemplate->getString("REPORT_SPAM").'
-    </div>
-  </div>';*/
-
-  $ret .= '
+    $ret .= '
   <div class = "clear"></div>
 </div>';
 
@@ -222,11 +223,27 @@ function drawQuestionBoxExtended(Question $q, $view, $basePath, $a = false, $app
 </div>";
     }
 
+    if($view == VIEW_EDIT_ARGUMENT)
+    {
+        $tabs .= "
+<div class = 'tab tab_active'>
+  ".$sTemplate->getString("QUESTION_TAB_EDIT_ARGUMENT")."
+</div>";
+    }
+
     if($view == VIEW_NEW_COUNTER_ARGUMENT)
     {
         $tabs .= "
 <div class = 'tab tab_active'>
   ".$sTemplate->getString("QUESTION_TAB_NEW_COUNTER_ARGUMENT")."
+</div>";
+    }
+
+    if($view == VIEW_EDIT_COUNTER_ARGUMENT)
+    {
+        $tabs .= "
+<div class = 'tab tab_active'>
+  ".$sTemplate->getString("QUESTION_TAB_EDIT_COUNTER_ARGUMENT")."
 </div>";
     }
 
@@ -255,7 +272,7 @@ function drawQuestionBoxDetails(Question $q)
 
 function drawArgumentBoxRaw(Question $q, $tabs, Argument $a, $basePath, $abstract = true)
 {
-    global $sTemplate;
+    global $sTemplate, $sUser;
 
     $ret = "";
 
@@ -277,23 +294,35 @@ function drawArgumentBoxRaw(Question $q, $tabs, Argument $a, $basePath, $abstrac
   <div class = "stats question_stats">
     <div class = "points question_points">'.$numPoints.'</div>
     <div class = "points_text question_points_text">'.$sTemplate->getStringNumber("QUESTION_POINTS", Array(), Array(), $numPoints).'</div>
-    '.voteUp('question_vote_up', $q->questionId(), $argumentId, $a->type()).'
-    '.voteDn('question_vote_dn', $q->questionId(), $argumentId, $a->type()).'
+    '.voteUp('question_vote_up', $q->questionId(), $argumentId, $a->type(), $q->type(), $q->flags()).'
+    '.voteDn('question_vote_dn', $q->questionId(), $argumentId, $a->type(), $q->type(), $q->flags()).'
   </div>
   <div class = "argument_title"><a href = "'.$a->url($basePath).'">'.$a->headline().'</a></div>';
 
     if($abstract)
     {
-        $ret .= '<div class = "argument_abstract_extended">'.$a->abstractText().'</div>';
+        if(!$a->details())
+        {
+            $ret .= '<div class = "argument_abstract_extended">'.$a->abstractText().'</div>';
+        }else
+        {
+            $ret .= '<div class = "argument_abstract_extended">'.$a->abstractText().' <a class="read_more" href = "'.$a->url($basePath).'">&gt;&gt;</a></div>';
+        }
     }else
     {
         $ret .= '<div class = "argument_abstract_extended argument_abstract_cursive">'.$a->abstractText().'</div>';
         $ret .= '<div class = "argument_details_extended">'.$a->details().'</div>';
     }
 
-    $ret .= '
-  <div class = "author question_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($a->timeSince(), $a->authorLink())).'</div>
+    if($a->canEdit($sUser))
+    {
+        $ret .= '<div class = "author question_author"><a href = "'.$a->url($basePath).'edit/">'.$sTemplate->getString("ARGUMENT_EDIT", Array("[TIMELEFT]"), Array($a->timeLeftEdit())).'</a></div>';
+    }else
+    {
+        $ret .= '<div class = "author question_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($a->timeSince(), $a->authorLink())).'</div>';
+    }
 
+    $ret .= '
   <div class = "argument_'.($a->type() == ARGUMENT_PRO ? "pro" : "con").'_bar"></div>
 </div>';
 
@@ -407,9 +436,10 @@ function drawQuestionDistribution(Question $q)
     $faction = $sUser->getFactionByQuestionId($q->questionId());
 
     $onSubmit = "";
-    if(!$sUser->isLoggedIn())
+    if(!$sUser->isLoggedIn() &&
+       ($q->type() != QUESTION_TYPE_UNLISTED || !($q->hasFlag(QUESTION_FLAG_PART_ALL))))
     {
-        $onSubmit = "wikiarguments.raiseError(\"".$sTemplate->getString("NOTICE_CHECKIN_NOT_LOGGED_IN")."\"); return false;";
+        $onSubmit = "wikiargument.raiseError(\"".$sTemplate->getString("NOTICE_CHECKIN_NOT_LOGGED_IN")."\"); return false;";
     }
 
     $content = "
@@ -476,16 +506,16 @@ function drawQuestionDistribution(Question $q)
     echo $content;
 }
 
-function drawArgument(Argument $a, $basePath, $abstract = true)
+function drawArgument(Question $q, Argument $a, $basePath, $abstract = true)
 {
-    global $sTemplate;
+    global $sTemplate, $sUser;
 
     $url                 = $a->url($basePath);
     $urlCounterArguments = $a->urlCounterArguments($basePath);
     $suffix              = "";
 
     $content = '
-<div class = "argument_wrapper">
+<div class = "argument_wrapper" id = "argument_wrapper_'.$a->questionId().'_'.$a->argumentId().'">
     ';
 
     if($a->parentId() == 0)
@@ -513,8 +543,8 @@ function drawArgument(Argument $a, $basePath, $abstract = true)
     <div class = "stats argument_stats">
       <div class = "points argument_points">'.$numPoints.'</div>
       <div class = "points_text argument_points_text">'.$sTemplate->getStringNumber("QUESTION_POINTS", Array(), Array(), $numPoints).'</div>
-      '.voteUp('argument_vote_up', $a->questionId(), $a->argumentId(), $a->type()).'
-      '.voteDn('argument_vote_dn', $a->questionId(), $a->argumentId(), $a->type()).'
+      '.voteUp('argument_vote_up', $a->questionId(), $a->argumentId(), $a->type(), $q->type(), $q->flags()).'
+      '.voteDn('argument_vote_dn', $a->questionId(), $a->argumentId(), $a->type(), $q->type(), $q->flags()).'
     </div>';
 
     if($a->details())
@@ -546,8 +576,15 @@ function drawArgument(Argument $a, $basePath, $abstract = true)
         $content .= '<div class = "argument_details">'.$a->details().'</div>';
     }
 
+    if($a->canEdit($sUser))
+    {
+        $content .= '<div class = "author question_author"><a href = "'.$a->url($basePath).'edit/">'.$sTemplate->getString("ARGUMENT_EDIT", Array("[TIMELEFT]"), Array($a->timeLeftEdit())).'</a></div>';
+    }else
+    {
+        $content .= '<div class = "author question_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($a->timeSince(), $a->authorLink())).'</div>';
+    }
+
     $content .= '
-    <div class = "author argument_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($a->timeSince(), $a->authorLink())).'</div>
     <div class = "argument_'.($a->type() == ARGUMENT_PRO ? "pro" : "con").'_bar"></div>
   </div>
 </div>
@@ -561,14 +598,14 @@ function drawArgumentList(Question $q, $basePath)
     global $sTemplate, $sUser, $sPermissions;
 
     $faction = $sUser->getFactionByQuestionId($q->questionId());
-
     $onClickHandler = "";
-    if(!$sUser->isLoggedIn())
+    if(!$sUser->isLoggedIn() && !$q->hasFlag(QUESTION_FLAG_PART_ALL))
     {
-        $onClickHandler = "wikiarguments.raiseError(\"".$sTemplate->getString("NOTICE_NEW_ARGUMENT_NOT_LOGGED_IN")."\"); return false;";
-    }else if($sPermissions->getPermission($sUser, ACTION_NEW_ARGUMENT) == PERMISSION_DISALLOWED)
+        $onClickHandler = "wikiargument.raiseError(\"".$sTemplate->getString("NOTICE_NEW_ARGUMENT_NOT_LOGGED_IN")."\"); return false;";
+    }else if($sPermissions->getPermission($sUser, ACTION_NEW_ARGUMENT) == PERMISSION_DISALLOWED ||
+             ($q->group() && $q->group()->getPermission($sUser, ACTION_NEW_ARGUMENT) == PERMISSION_DISALLOWED))
     {
-        $onClickHandler = "wikiarguments.raiseError(\"".$sTemplate->getString("NOTICE_NEW_ARGUMENT_NO_PERMISSION")."\"); return false;";
+        $onClickHandler = "wikiargument.raiseError(\"".$sTemplate->getString("NOTICE_NEW_ARGUMENT_NO_PERMISSION")."\"); return false;";
     }
 
     $content = "
@@ -577,7 +614,7 @@ function drawArgumentList(Question $q, $basePath)
 
     foreach($q->arguments(FILTER_PRO, SORT_SCORE) as $k => $v)
     {
-        $content .= drawArgument($v, $basePath);
+        $content .= drawArgument($q, $v, $basePath);
     }
 
     $content .= "
@@ -593,7 +630,7 @@ function drawArgumentList(Question $q, $basePath)
 
     foreach($q->arguments(FILTER_CON, SORT_SCORE) as $k => $v)
     {
-        $content .= drawArgument($v, $basePath);
+        $content .= drawArgument($q, $v, $basePath);
     }
 
     $content .= "
@@ -613,12 +650,12 @@ function drawArgumentList(Question $q, $basePath)
     echo $content;
 }
 
-function drawCounterArguments(Argument $a, $basePath)
+function drawCounterArguments(Question $q, Argument $a, $basePath)
 {
     $content = "";
     foreach($a->arguments() as $k => $v)
     {
-        $content .= drawArgument($v, $basePath);
+        $content .= drawArgument($q, $v, $basePath);
     }
 
     echo $content;
@@ -641,7 +678,7 @@ function computeBorderRadius($argumentConWidth)
 
 function drawArgumentBoxFull(Question $q, Argument $a, $basePath)
 {
-    global $sTemplate;
+    global $sTemplate, $sUser;
 
     $ret        = "";
     $argumentId = $a->argumentId();
@@ -652,17 +689,23 @@ function drawArgumentBoxFull(Question $q, Argument $a, $basePath)
   <div class = "stats question_stats">
     <div class = "points question_points">'.$numPoints.'</div>
     <div class = "points_text question_points_text">'.$sTemplate->getStringNumber("QUESTION_POINTS", Array(), Array(), $numPoints).'</div>
-    '.voteUp('question_vote_up', $q->questionId(), $argumentId, $a->type()).'
-    '.voteDn('question_vote_dn', $q->questionId(), $argumentId, $a->type()).'
+    '.voteUp('question_vote_up', $q->questionId(), $argumentId, $a->type(), $q->type(), $q->flags()).'
+    '.voteDn('question_vote_dn', $q->questionId(), $argumentId, $a->type(), $q->type(), $q->flags()).'
   </div>
   <div class = "argument_title"><a href = "'.$a->url($basePath).'">'.$a->headline().'</a></div>';
 
     $ret .= '<div class = "argument_abstract_extended argument_abstract_cursive">'.$a->abstractText().'</div>';
     $ret .= '<div class = "argument_details_extended">'.$a->details().'</div>';
 
-    $ret .= '
-  <div class = "author question_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($a->timeSince(), $a->authorLink())).'</div>
 
+    if($a->canEdit($sUser))
+    {
+        $ret .= '<div class = "author question_author"><a href = "'.$a->url($basePath).'edit/">'.$sTemplate->getString("ARGUMENT_EDIT", Array("[TIMELEFT]"), Array($a->timeLeftEdit())).'</a></div>';
+    }else
+    {
+        $ret .= '<div class = "author question_author">'.$sTemplate->getString("QUESTION_AUTHOR", Array("[TIMESINCE]", "[USERNAME]"), Array($a->timeSince(), $a->authorLink())).'</div>';
+    }
+    $ret .= '
   <div class = "argument_'.($a->type() == ARGUMENT_PRO ? "pro" : "con").'_bar"></div>
 </div>';
 

@@ -51,7 +51,7 @@ class QueryMgr
 
         if(@$userName)
         {
-            $res = $sDB->exec("SELECT `userId` FROM `users` WHERE `userName` = '".mysql_real_escape_string($userName)."' LIMIT 1;");
+            $res = $sDB->execUsers("SELECT `userId` FROM `users` WHERE `userName` = '".mysql_real_escape_string($userName)."' LIMIT 1;");
             if(mysql_num_rows($res))
             {
                 $row = mysql_fetch_object($res);
@@ -60,7 +60,7 @@ class QueryMgr
         }
         if(@$userEmail)
         {
-            $res = $sDB->exec("SELECT `userId` FROM `users` WHERE `email` = '".mysql_real_escape_string($userEmail)."' LIMIT 1;");
+            $res = $sDB->execUsers("SELECT `userId` FROM `users` WHERE `email` = '".mysql_real_escape_string($userEmail)."' LIMIT 1;");
             if(mysql_num_rows($res))
             {
                 $row = mysql_fetch_object($res);
@@ -106,7 +106,7 @@ class QueryMgr
                 $user->load($user_id);
                 if($user->isLoggedIn() && $sSession->getVal('lastAction') < (time() - 600) && !$sSession->getVal('admin_su'))
                 {
-                    $sDB->exec("UPDATE `users` SET `user_last_action` = '".time()."' WHERE `userId` = '".mysql_real_escape_string($user_id)."' LIMIT 1;");
+                    $sDB->execUsers("UPDATE `users` SET `user_last_action` = '".time()."' WHERE `userId` = '".mysql_real_escape_string($user_id)."' LIMIT 1;");
                     $sSession->setVal('lastAction', time());
                 }else if($sSession->getVal('admin_su'))
                 {
@@ -126,8 +126,13 @@ class QueryMgr
     */
     function getUsernameById($userId)
     {
-        global $sDB;
-        $res = $sDB->exec("SELECT `userName` FROM `users` WHERE `userId` = '".mysql_real_escape_string($userId)."' LIMIT 1;");
+        global $sDB, $sTemplate;
+        if($userId == 0)
+        {
+            return $sTemplate->getString("USERNAME_ANON");
+        }
+
+        $res = $sDB->execUsers("SELECT `userName` FROM `users` WHERE `userId` = '".mysql_real_escape_string($userId)."' LIMIT 1;");
         if(mysql_num_rows($res) == 1)
         {
             $row = mysql_fetch_object($res);

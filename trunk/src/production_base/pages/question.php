@@ -43,14 +43,6 @@ class PageQuestion extends Page
         $this->question = false;
         $this->view     = $sRequest->getInt("view");
 
-        if($sRequest->getInt("vote_select"))
-        {
-            $vote       = $sRequest->getInt("vote");
-            $questionId = $sRequest->getInt("questionId");
-            $argumentId = $sRequest->getInt("argumentId");
-            $sStatistics->vote($questionId, $argumentId, $vote);
-        }
-
         $res = $sDB->exec("SELECT * FROM `questions` WHERE `url` = '".mysql_real_escape_string($questionTitle)."' LIMIT 1;");
         while($row = mysql_fetch_object($res))
         {
@@ -62,6 +54,23 @@ class PageQuestion extends Page
             $sTemplate->error($sTemplate->getString("ERROR_INVALID_QUESTION"));
         }
 
+        if($sRequest->getInt("vote_select"))
+        {
+            if($this->question->group() && $this->question->group()->getPermission($sUser, ACTION_VOTE) == PERMISSION_DISALLOWED)
+            {
+            }else
+            {
+                $vote       = $sRequest->getInt("vote");
+                $questionId = $sRequest->getInt("questionId");
+                $argumentId = $sRequest->getInt("argumentId");
+                $sStatistics->vote($this->question, $argumentId, $vote);
+
+                //header("Location: ".$this->question->url()."#argument_wrapper_".$questionId."_".$argumentId);
+                header("Location: ".$this->question->url());
+                exit;
+            }
+        }
+
         if($this->view == VIEW_DETAILS)
         {
             $this->setShortUrl($this->question->shortUrlDetails());
@@ -70,11 +79,17 @@ class PageQuestion extends Page
             $this->setShortUrl($this->question->shortUrl());
         }
 
-        if($sRequest->getInt("faction_select") && $sUser->isLoggedIn())
+        if($sRequest->getInt("faction_select") &&
+           ($sUser->isLoggedIn() || $this->question->hasFlag(QUESTION_FLAG_PART_ALL)))
         {
-            $faction = $sRequest->getInt("faction");
-            if(in_array($faction, Array(FACTION_PRO, FACTION_CON, FACTION_NONE)))
+            if($this->question->group() && $this->question->group()->getPermission($sUser, ACTION_VOTE) == PERMISSION_DISALLOWED)
             {
+            }else
+            {
+                $faction = $sRequest->getInt("faction");
+
+                validateFaction($faction);
+
                 $sUser->setFactionByQuestionId($this->question->questionId(), $faction);
 
                 $sStatistics->updateQuestionStats($this->question->questionId());
@@ -97,9 +112,17 @@ class PageQuestion extends Page
 
     public function canView()
     {
+        global $sUser, $sTemplate;
+
         if(!$this->question)
         {
             $this->setError($sTemplate->getString("ERROR_INVALID_QUESTION"));
+            return false;
+        }
+
+        if($this->question->group() && $this->question->group()->getPermission($sUser, ACTION_VIEW_GROUP) == PERMISSION_DISALLOWED)
+        {
+            $this->setError($sTemplate->getString("ERROR_GROUP_INSUFFICIENT_RIGHTS"));
             return false;
         }
 
