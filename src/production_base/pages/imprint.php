@@ -36,7 +36,7 @@ class PageImprint extends Page
 {
     public function PageImprint($row)
     {
-        global $sDB, $sRequest, $sStatistics;
+        global $sDB, $sRequest, $sStatistics, $sUser;
         parent::Page($row);
     }
 

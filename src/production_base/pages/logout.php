@@ -36,7 +36,7 @@ class PageLogout extends Page
 {
     public function PageLogout($row)
     {
-        global $sDB, $sRequest;
+        global $sDB, $sRequest, $sUser;
         parent::Page($row);
 
         $this->handleLogout();

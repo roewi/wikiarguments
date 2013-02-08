@@ -45,6 +45,7 @@ define("MYSQL_PASS",                        "");
 
 /* mysql database */
 define("MYSQL_NAME",                        "");
+define("MYSQL_NAME_GLOBAL",                 MYSQL_NAME);
 
 /* url to the template directory with trailing slash */
 define("TEMPLATE_ROOT",                     "http://de.wikiarguments.net/tpl/default/");
@@ -76,13 +77,18 @@ define("POSTS_ANON",                        false);
 
 define("QUESTIONS_PER_PAGE",                10);
 
-define("MAX_ARGUMENT_CHR_LENGTH",           25);
 define("MAX_ARGUMENT_ABS_CHR_LENGTH",       140);
 define("MAX_QUESTION_CHR_LENGTH",           100);
+define("MAX_ARGUMENT_HEADLINE_CHR_LENGTH",  25);
+define("MAX_TAGS_CHR_LENGTH",               45);
+define("MAX_GROUP_NAME_CHR_LENGTH",         30);
+define("USERNAME_MAX_LEN",                  20);
 
 define("DEBUG_TIMING_SLOW_QUERY_TIME",      1000);
 define("SESSION_SYNC_INTERVAL",             0);
 
+define("QUESTION_EDIT_INTERVAL",            600);
+define("ARGUMENT_EDIT_INTERVAL",            600);
 
 // opcode debugging
 define("DEBUG_OPCODES",                     1);
@@ -119,6 +125,15 @@ function getMemcachedHosts()
         Array("data",    "127.0.0.1", "11211")
     );
     return $hosts;
+}
+
+/*
+* Set of global tables in case of multiple instances using the same user database.
+*/
+function getGlobalTables()
+{
+    $glob = Array();
+    return $glob;
 }
 
 function getAvailableLanguages()

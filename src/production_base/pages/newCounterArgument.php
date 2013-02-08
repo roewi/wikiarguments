@@ -36,7 +36,7 @@ class PageNewCounterArgument extends Page
 {
     public function PageNewCounterArgument($row)
     {
-        global $sDB, $sRequest;
+        global $sDB, $sRequest, $sUser;
         parent::Page($row);
 
         $questionTitle  = $sRequest->getString("title");
@@ -92,7 +92,7 @@ class PageNewCounterArgument extends Page
             return false;
         }
 
-        if(!$sUser->isLoggedIn())
+        if(!$sUser->isLoggedIn() && !$this->question->hasFlag(QUESTION_FLAG_PART_ALL))
         {
             $this->setError($sTemplate->getString("ERROR_NOT_LOGGED_IN"));
             return false;
@@ -101,6 +101,12 @@ class PageNewCounterArgument extends Page
         if($sPermissions->getPermission($sUser, ACTION_NEW_COUNTER_ARGUMENT) == PERMISSION_DISALLOWED)
         {
             $this->setError($sTemplate->getString("ERROR_NO_PERMISSION"));
+            return false;
+        }
+
+        if($this->group && $this->group->getPermission($sUser, ACTION_NEW_COUNTER_ARGUMENT) == PERMISSION_DISALLOWED)
+        {
+            $this->setError($sTemplate->getString("NOTICE_NEW_COUNTER_ARGUMENT_NO_PERMISSION"));
             return false;
         }
 
@@ -135,12 +141,14 @@ class PageNewCounterArgument extends Page
     {
         global $sRequest, $sTemplate, $sUser, $sPermissions;
 
-        if(!$sUser->isLoggedIn() || $sPermissions->getPermission($sUser, ACTION_NEW_COUNTER_ARGUMENT) == PERMISSION_DISALLOWED)
+        if((!$sUser->isLoggedIn() && !$this->question->hasFlag(QUESTION_FLAG_PART_ALL)) ||
+            $sPermissions->getPermission($sUser, ACTION_NEW_COUNTER_ARGUMENT) == PERMISSION_DISALLOWED)
         {
             return false;
         }
 
         $headline       = $sRequest->getStringPlain("new_argument_headline");
+        $headline       = mb_substr($headline, 0, MAX_ARGUMENT_HEADLINE_CHR_LENGTH, 'utf-8');
         $headlineParsed = preg_replace("/[^0-9a-zÄÖÜäöüáàâéèêíìîóòôúùû\[\]\{\} -]/i", "", $headline);
 
         $abstract = $sRequest->getStringPlain("new_argument_abstract");

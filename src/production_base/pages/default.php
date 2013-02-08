@@ -36,13 +36,19 @@ class PageDefault extends Page
 {
     public function PageDefault($row)
     {
-        global $sDB, $sRequest, $sStatistics;
+        global $sDB, $sRequest, $sStatistics, $sUser, $sTemplate;
         parent::Page($row);
 
         $this->page     = $sRequest->getInt("page");
         $this->numPages = -1;
         $this->tags     = Array();
         $this->sort     = SORT_TRENDING;
+
+        if($this->group && $this->group->groupId() && $this->group->getPermission($sUser, ACTION_VIEW_GROUP) == PERMISSION_DISALLOWED)
+        {
+            header("Location: ".$sTemplate->getRoot());
+            exit;
+        }
 
         if(in_array($sRequest->getInt("sort"), Array(SORT_TRENDING, SORT_TOP, SORT_NEWEST)))
         {
@@ -64,7 +70,11 @@ class PageDefault extends Page
             $vote       = $sRequest->getInt("vote");
             $questionId = $sRequest->getInt("questionId");
             $argumentId = $sRequest->getInt("argumentId");
-            $sStatistics->vote($questionId, $argumentId, $vote);
+            $sStatistics->vote(new Question($questionId), $argumentId, $vote);
+
+            //header("Location: ".$sTemplate->getRoot()."#question_".$questionId);
+            header("Location: ".$this->basePath().($this->getPage() != 0 ? $this->getPage()."/" : ""));
+            exit;
         }
 
         $this->questions = Array();
@@ -80,19 +90,25 @@ class PageDefault extends Page
     {
         global $sTemplate;
 
+        $tagString = $this->getTagsString();
+        if($tagString != "")
+        {
+            $tagString .= " - ";
+        }
+
         switch($this->sort)
         {
             case SORT_TRENDING:
             {
-                return $sTemplate->getString("HTML_META_TITLE_TRENDING");
+                return $sTemplate->getString("HTML_META_TITLE_TRENDING", Array("[TAGS]"), Array($tagString));
             }break;
             case SORT_TOP:
             {
-                return $sTemplate->getString("HTML_META_TITLE_TOP");
+                return $sTemplate->getString("HTML_META_TITLE_TOP", Array("[TAGS]"), Array($tagString));
             }break;
             case SORT_NEWEST:
             {
-                return $sTemplate->getString("HTML_META_TITLE_NEWEST");
+                return $sTemplate->getString("HTML_META_TITLE_NEWEST", Array("[TAGS]"), Array($tagString));
             }break;
         }
 
@@ -133,7 +149,7 @@ class PageDefault extends Page
             $qry .= "*";
         }
 
-        $qry .= " FROM `questions`";
+        $qry .= " FROM `questions` WHERE `type` = '".QUESTION_TYPE_LISTED."' ";
 
         if(count($this->tags))
         {
@@ -145,7 +161,7 @@ class PageDefault extends Page
             }
             $tagString = substr($tagString, 2);
 
-            $res = $sDB->exec("SELECT count(*) as `cnt`, `questionId` FROM `tags` WHERE `tag` IN (".$tagString.") GROUP BY `questionId`;");
+            $res = $sDB->exec("SELECT count(*) as `cnt`, `questionId` FROM `tags` WHERE `tag` IN (".$tagString.") AND `groupId` = '".i($this->groupId)."' GROUP BY `questionId`;");
             while($row = mysql_fetch_object($res))
             {
                 if($row->cnt >= $cnt)
@@ -162,7 +178,11 @@ class PageDefault extends Page
                 $idString = "0";
             }
 
-            $qry .= " WHERE `questionId` IN (".$idString.")";
+            $qry .= " AND `groupId` = '".i($this->groupId)."' ";
+            $qry .= " AND `questionId` IN (".$idString.") ";
+        }else
+        {
+            $qry .= " AND `groupId` = '".i($this->groupId)."' ";
         }
 
         switch($this->sort)
@@ -231,6 +251,18 @@ class PageDefault extends Page
             $path = $sTemplate->getRoot()."tags/top/";
         }
 
+        if($this->groupId())
+        {
+            $path = $sTemplate->getRoot()."groups/".$this->group()->url()."/tags/trending/";
+            if($this->sort == SORT_NEWEST)
+            {
+                $path = $sTemplate->getRoot()."groups/".$this->group()->url()."/tags/newest/";
+            }else if($this->sort == SORT_TOP)
+            {
+                $path = $sTemplate->getRoot()."groups/".$this->group()->url()."/tags/top/";
+            }
+        }
+
         if($this->tags)
         {
             foreach($this->tags as $k => $v)
@@ -247,6 +279,17 @@ class PageDefault extends Page
     public function basePathNoFilter()
     {
         global $sTemplate;
+
+        if($this->groupId())
+        {
+            if($this->sort == SORT_NEWEST)
+            {
+                return $sTemplate->getRoot()."groups/".$this->group()->url()."/tags/newest/";
+            }else if($this->sort == SORT_TOP)
+            {
+                return $sTemplate->getRoot()."groups/".$this->group()->url()."/tags/top/";
+            }
+        }
 
         if($this->sort == SORT_NEWEST)
         {

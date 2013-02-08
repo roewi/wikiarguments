@@ -52,6 +52,7 @@ include("./debug.php");
 include("./question.php");
 include("./argument.php");
 include("./mail.php");
+include("./group.php");
 
 // packet handlers
 include("./packets/general.php");
@@ -72,6 +73,12 @@ include("./pages/error.php");
 include("./pages/profile.php");
 include("./pages/manageProfile.php");
 include("./pages/imprint.php");
+include("./pages/newGroup.php");
+include("./pages/manageGroup.php");
+include("./pages/editQuestion.php");
+include("./pages/editArgument.php");
+include("./pages/editCounterArgument.php");
+include("./pages/faq.php");
 
 mt_srand(time());
 

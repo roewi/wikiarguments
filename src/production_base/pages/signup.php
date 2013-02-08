@@ -36,7 +36,7 @@ class PageSignup extends Page
 {
     public function PageSignup($row)
     {
-        global $sDB, $sRequest;
+        global $sDB, $sRequest, $sUser;
         parent::Page($row);
 
         $this->view = VIEW_SIGNUP;
@@ -51,11 +51,6 @@ class PageSignup extends Page
         {
             $this->handlePassRequest();
         }
-    }
-
-    public function getQuestion()
-    {
-        return $this->question;
     }
 
     public function getView()
@@ -124,6 +119,7 @@ class PageSignup extends Page
         {
             if(!isValidUsername($username))
             {
+                $this->setError($sTemplate->getString("SIGNUP_ERROR_INVALID_USERNAME"));
                 return false;
             }
 
@@ -135,13 +131,13 @@ class PageSignup extends Page
             }
 
             $user = $sQuery->getUser("userEmail=".$email);
-            if($user)
+            if($user || !$email)
             {
                 $this->setError($sTemplate->getString("SIGNUP_ERROR_EMAIL_IN_USE"));
                 return false;
             }
 
-            if($password != $password2)
+            if($password != $password2 || $password == "")
             {
                 $this->setError($sTemplate->getString("SIGNUP_ERROR_PASSWORD_MISMATCH"));
                 return false;

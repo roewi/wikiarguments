@@ -50,8 +50,8 @@ drawQuestionBoxExtended($sPage->getQuestion(), $sPage->getView(), $sPage->basePa
         <div class = "row">
           <div class = "label"><? echo $sTemplate->getString("NEW_ARGUMENT_HEADLINE"); ?></div>
           <div class = "input">
-            <textarea id = "new_argument_headline" name = "new_argument_headline" maxlength="<? echo MAX_ARGUMENT_CHR_LENGTH;?> "></textarea>
-            <span class="characters_left"><span id="argument_headline_chars_left"><? echo MAX_ARGUMENT_CHR_LENGTH;?></span> <? echo $sTemplate->getString("CHARS_WRITTEN_LEFT"); ?></span>
+            <textarea id = "new_argument_headline" name = "new_argument_headline" maxlength="<? echo MAX_ARGUMENT_HEADLINE_CHR_LENGTH;?> "></textarea>
+            <span class="characters_left"><span id="argument_headline_chars_left"><? echo MAX_ARGUMENT_HEADLINE_CHR_LENGTH;?></span> <? echo $sTemplate->getString("CHARS_WRITTEN_LEFT"); ?></span>
           </div>
         </div>
 
@@ -72,7 +72,7 @@ drawQuestionBoxExtended($sPage->getQuestion(), $sPage->getView(), $sPage->basePa
         </div>
 
         <div class = "row row_submit">
-        <button class = "button_orange" onclick = "wikiarguments.submitArgument('#new_argument'); return false;"><? echo $sTemplate->getString("SUBMIT_NEW_ARGUMENT"); ?></button>
+        <button class = "button_orange" id = "buttonSubmit" onclick = "wikiargument.submitArgument('#new_argument', '#buttonSubmit'); return false;"><? echo $sTemplate->getString("SUBMIT_NEW_ARGUMENT"); ?></button>
         </div>
         <input type = "hidden" name = "new_argument" value = "1" />
       </div>

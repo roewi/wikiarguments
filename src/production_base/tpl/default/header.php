@@ -32,7 +32,7 @@
  * thereof with code not governed by the terms of the CPAL.
  *******************************************************************************/
 
-global $sTemplate, $sUser, $sQuery;
+global $sTemplate, $sUser, $sQuery, $sPage;
 $lang = $sTemplate->getLangBase();
 
 // TODO: move to Page<*>
@@ -61,13 +61,22 @@ $trendingActive = false;
 $topActive      = false;
 $newestActive   = false;
 
-if($sTemplate->isCurrentPage('default'))
+if($sTemplate->isCurrentPage('default') || $sTemplate->isCurrentPage("group"))
 {
     $sort = $sPage->getSort();
 
     $trendingActive = $sort == SORT_TRENDING;
     $topActive      = $sort == SORT_TOP;
     $newestActive   = $sort == SORT_NEWEST;
+}
+if($sPage->group())
+{
+    if($sPage->group()->url())
+    {
+        $filterStringTrending   = "groups/".$sPage->group()->url()."/".$filterStringTrending;
+        $filterStringTop        = "groups/".$sPage->group()->url()."/".$filterStringTop;
+        $filterStringNewest     = "groups/".$sPage->group()->url()."/".$filterStringNewest;
+    }
 }
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//<? echo strtoupper($sTemplate->getString("HTML_HEADER_META_LANG")); ?>"
@@ -79,22 +88,32 @@ if($sTemplate->isCurrentPage('default'))
   <meta http-equiv="content-language" content="<? echo $sTemplate->getString("HTML_HEADER_META_LANG"); ?>" />
   <title><? echo $sPage->title(); ?></title>
 
+
   <link rel = "stylesheet" type = "text/css" href = "<? echo $sTemplate->getTemplateRoot(); ?>css/jquery-ui-1.7.2.custom.css.php" />
   <link rel = "stylesheet" type = "text/css" href = "<? echo $sTemplate->getTemplateRoot(); ?>css/style.css.php" />
 
+
+
   <script type='text/javascript' src='<? echo $sTemplate->getTemplateRoot(); ?>js/jquery.min.js'></script>
   <script type='text/javascript' src='<? echo $sTemplate->getTemplateRoot(); ?>js/jquery-ui.min.js'></script>
+  <script type='text/javascript' src='<? echo $sTemplate->getTemplateRoot(); ?>js/jquery.jlabel-1.3.min.js'></script>
   <script type='text/javascript' src='<? echo $sTemplate->getTemplateRoot(); ?>js/jquery.fancynotification.js'></script>
   <script type='text/javascript' src='<? echo $sTemplate->getTemplateRoot(); ?>js/jquery.json.js'></script>
   <script type='text/javascript' src='<? echo $sTemplate->getTemplateRoot(); ?>js/wikiargument.js.php'></script>
   <script type='text/javascript' src='<? echo $sTemplate->getTemplateRoot(); ?>js/wikiargument_ui.js.php'></script>
+
+
 
 </head>
 <? flush(); ?>
 <body>
 
 <script>
-var wikiarguments = new _Wikiarguments();
+<? if($sPage->group() && $sPage->group()->url()) { ?>
+var wikiargument = new _Wikiargument('<? echo $sPage->group()->url(); ?>');
+<? }else { ?>
+var wikiargument = new _Wikiargument('');
+<? } ?>
 </script>
 
   <div id = "wrapper">
@@ -104,12 +123,34 @@ var wikiarguments = new _Wikiarguments();
       <div id = "header_white"></div>
 
       <div id = "header_content">
+<? if($sPage->group() && $sPage->group()->url()) { ?>
+        <a href = '<? echo $sTemplate->getRoot()."groups/".$sPage->group()->url()."/"; ?>'>
+          <div id = "header_logo_custom" style = "background: url('<? echo $sTemplate->getRoot(); ?>custom/<? echo $sPage->group()->groupId(); ?>/logo.png') no-repeat;"></div>
+        </a>
+<? }else { ?>
         <a href = '<? echo $sTemplate->getRoot(); ?>'>
           <div id = "header_logo"></div>
         </a>
+<?
+   }
+
+if($sPage->getQuestion() && $sPage->getQuestion()->type() == QUESTION_TYPE_UNLISTED)
+{
+?>
+    <div id = "header_logo_unlisted"></div>
+<?
+    if($sPage->getQuestion()->hasFlag(QUESTION_FLAG_PART_ALL))
+    {
+?>
+    <div id = "header_logo_unlisted_not_logged_in"></div>
+<?
+    }
+}
+
+?>
 
         <div id = "header_navigation">
-          <form action = "#" onsubmit = "wikiarguments.submitSearch(); return false;">
+          <form action = "#" onsubmit = "wikiargument.submitSearch(); return false;">
           <div class = "navi_point trend <? echo $trendingActive ? "current_page" : "";?>">
             <a href = '<? echo $sTemplate->getRoot(); ?><? echo $filterStringTrending; ?>'><? echo $sTemplate->getString("NAVIGATION_WHATS_HOT"); ?></a>
           </div>
@@ -142,9 +183,13 @@ var wikiarguments = new _Wikiarguments();
           <div class = "hidden profile_menu">
             <ul class="user_profile_list">
                 <li><div class = "icon_new_question"></div><a href = '<? echo $sTemplate->getRoot(); ?>new-question/'><? echo $sTemplate->getString("HEADER_NAVI_NEW_QUESTION"); ?></a></li>
+                <li><div class = "icon_share_page"></div><a href = '#' onclick = "wikiargument.sharePage('<? echo $sPage->shortUrl() ? $sPage->shortUrl() : ''; ?>');"><? echo $sTemplate->getString("HEADER_NAVI_SHARE_PAGE"); ?></a></li>
                 <li><div class = "icon_manage_profile"></div><a href = '<? echo $sTemplate->getRoot(); ?>manage-profile/'><? echo $sTemplate->getString("HEADER_NAVI_MANAGE_PROFILE"); ?></a></li>
                 <li><div class = "icon_my_profile"></div><a href = '<? echo $sTemplate->getRoot(); ?>user/<? echo $sUser->getUserId(); ?>/'><? echo $sTemplate->getString("HEADER_NAVI_MY_PROFILE"); ?></a></li>
                 <li><div class = "icon_logout"></div><a href = '<? echo $sTemplate->getRoot(); ?>logout/'><? echo $sTemplate->getString("HEADER_NAVI_LOGOUT"); ?></a></li>
+<? foreach($sUser->adminGroups() as $k => $g) { ?>
+                <li class = "user_profile_list_manage_group"><div class = "icon_new_group"></div><a href = '<? echo $sTemplate->getRoot(); ?>groups/<? echo $g->url(); ?>/manage-group/'><? echo htmlspecialchars($g->title()); ?></a></li>
+<? } ?>
             </ul>
           </div>
         </div>

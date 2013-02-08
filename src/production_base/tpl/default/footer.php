@@ -54,26 +54,38 @@ if($sPage->error())
 
 <? if($error) { ?>
 <script>
-wikiarguments.raiseError('<? echo $error; ?>');
+wikiargument.raiseError("<? echo $error; ?>");
 </script>
 <? }else if($notice) { ?>
 <script>
-wikiarguments.raiseNotice('<? echo $notice; ?>');
+wikiargument.raiseNotice("<? echo $notice; ?>");
 </script>
 <? } ?>
 </div>
   <div id = "footer">
     <div id = "footer_content">
-        <div id = "footer_logo"></div>
+        <a href = '<? echo $sTemplate->getRoot(); ?>'><div id = "footer_logo"></div></a>
         <div id = "footer_copyright">
           <? echo $sTemplate->getString("FOOTER_COPYRIGHT"); ?> |
-          <? echo $sTemplate->getString("FOOTER_TOS"); ?> |
+          <a href = '#' onclick = "$('#footer_menu').show(); return false;"><? echo $sTemplate->getString("FOOTER_MENU"); ?></a> |
           <a href = 'http://www.wikiarguments.net'>Powered by Wikiarguments</a>
         </div>
+        <div id = "footer_menu" style = "display: none;">
+          <? echo $sTemplate->getString("FOOTER_OPEN_SOURCE"); ?> |
+          <? echo $sTemplate->getString("CHANGELOG_URL"); ?><? echo $sTemplate->getString("FOOTER_CHANGELOG"); ?></a> |
+          <a href = '<? echo $sTemplate->getRoot(); ?>new-group/'><? echo $sTemplate->getString("FOOTER_NEW_GROUP"); ?></a> |
+          <? echo $sTemplate->getString("FOOTER_TOS"); ?> |
+          <a href = '#' onclick = "$('#footer_submenu').show(); return false;"><? echo $sTemplate->getString("LANGUAGE"); ?></a> 
+        </div>
+        <div id = "footer_submenu" style = "display: none;">
+          <? echo $sTemplate->getString("GERMAN_URL"); ?><? echo $sTemplate->getString("GERMAN"); ?></a> |
+          <? echo $sTemplate->getString("ENGLISH_URL"); ?><? echo $sTemplate->getString("ENGLISH"); ?></a>
+        </div>
         <div id="footer_socials">
-<? if($sPage->shortUrl()) { ?>
-            <a href = '<? echo $sPage->shortUrl(); ?>' class = 'short_url'><? echo $sPage->shortUrl(); ?></a>
-<? } ?>
+            <ul>
+                <li><a class="footer_twitter" href=""></a></li>
+                <li><a class="footer_facebook" href=""></a></li>
+            </ul>
         </div>
     </div>
   </div>

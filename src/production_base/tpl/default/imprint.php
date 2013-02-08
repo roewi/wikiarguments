@@ -40,7 +40,9 @@ $language   = $sTemplate->getLangBase();
 <? include($sTemplate->getTemplateRootAbs()."header.php"); ?>
 
 <div id = "content">
-<br><br><br><br><br>
+
+<? echo $sTemplate->getString("IMPRINT"); ?>
+
 
 </div>
 

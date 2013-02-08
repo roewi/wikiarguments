@@ -165,15 +165,58 @@ class StatisticsMgr
         $sDB->exec("UPDATE `arguments` SET `score` = '".i($score)."' WHERE `questionId` = '".i($questionId)."' AND `argumentId` = '".i($argumentId)."' LIMIT 1;");
     }
 
-    public function vote($questionId, $argumentId, $vote, $user = false, $forceVote = false)
+    /*
+    * Remove all votes from this argument.
+    */
+    public function resetArgumentVotes(Argument $argument)
+    {
+        global $sDB, $sQuery;
+
+        $inc = 0;
+
+        $res = $sDB->exec("SELECT * FROM `user_votes` WHERE `argumentId` = '".i($argument->argumentId())."';");
+        while($row = mysql_fetch_object($res))
+        {
+            $inc += $row->vote;
+        }
+
+        $sDB->execUsers("UPDATE `users` SET `scoreArguments` = `scoreArguments` - ".i($inc)." WHERE `userId` = '".i($argument->userId())."' LIMIT 1;");
+
+        $sDB->exec("DELETE FROM `user_votes` WHERE `argumentId` = '".i($argument->argumentId())."';");
+    }
+
+    /*
+    * Remove all votes from this question.
+    * Make sure that no arguments exist before this call!
+    */
+    public function resetQuestionVotes(Question $question)
+    {
+        global $sDB, $sQuery;
+
+        $inc = 0;
+
+        $res = $sDB->exec("SELECT * FROM `user_votes` WHERE `questionId` = '".i($question->questionId())."';");
+        while($row = mysql_fetch_object($res))
+        {
+            $inc += $row->vote;
+        }
+
+        $sDB->execUsers("UPDATE `users` SET `scoreQuestions` = `scoreQuestions` - ".i($inc)." WHERE `userId` = '".i($question->authorId())."' LIMIT 1;");
+
+        $sDB->exec("DELETE FROM `user_votes` WHERE `questionId` = '".i($question->questionId())."';");
+    }
+
+    public function vote(Question $question, $argumentId, $vote, $user = false, $forceVote = false)
     {
         global $sUser, $sDB, $sQuery, $sPermissions;
+
+        $questionId = $question->questionId();
 
         if($user == false)
         {
             $user = $sUser;
-
-            if(!$sUser->isLoggedIn())
+            if(!$sUser->isLoggedIn() &&
+               ($question->type() != QUESTION_TYPE_UNLISTED || !($question->hasFlag(QUESTION_FLAG_PART_ALL))))
             {
                 return false;
             }
@@ -187,6 +230,37 @@ class StatisticsMgr
         if($sPermissions->getPermission($user, ACTION_VOTE) == PERMISSION_DISALLOWED)
         {
             return false;
+        }
+
+        $cookieData = false;
+        if(!$user->isLoggedIn())
+        {
+            $cookieData = $_COOKIE['voteData'];
+            if($cookieData)
+            {
+                $cookieData = unserialize($cookieData);
+                if(is_array($cookieData))
+                {
+                    if(is_array($cookieData[$questionId]))
+                    {
+                        if($cookieData[$questionId][$argumentId])
+                        {
+                            validateVote($cookieData[$questionId][$argumentId]);
+                        }
+                    }else
+                    {
+                        $cookieData[$questionId] = Array();
+                    }
+                }else
+                {
+                    $cookieData = Array();
+                    $cookieData[$questionId] = Array();
+                }
+            }else
+            {
+                $cookieData = Array();
+                $cookieData[$questionId] = Array();
+            }
         }
 
         if($argumentId && !$forceVote)
@@ -204,17 +278,39 @@ class StatisticsMgr
             }
         }
 
-        $this->lazyUpdateUserStats($questionId, $argumentId, $vote, $user->getUserId());
+        if($user->isLoggedIn())
+        {
+            $this->lazyUpdateUserStats($questionId, $argumentId, $vote, $user->getUserId());
 
-        $sDB->exec("DELETE FROM `user_votes` WHERE `userId` = '".i($user->getUserId())."' AND `questionId` = '".i($questionId)."' AND `argumentId` = '".i($argumentId)."';");
+            $sDB->exec("DELETE FROM `user_votes` WHERE `userId` = '".i($user->getUserId())."' AND `questionId` = '".i($questionId)."' AND `argumentId` = '".i($argumentId)."';");
+        }else
+        {
+            // check if a vote state exists in the user's cookie
+            if($cookieData[$questionId][$argumentId])
+            {
+                validateVote($cookieData[$questionId][$argumentId]);
+                $sDB->exec("DELETE FROM `user_votes` WHERE `userId` = '".i($user->getUserId())."' AND `questionId` = '".i($questionId)."' AND `argumentId` = '".i($argumentId)."' LIMIT 1;");
+                unset($cookieData[$questionId]);
+            }
+        }
 
         if($vote != VOTE_NONE)
         {
             $sDB->exec("INSERT INTO `user_votes` (`voteId`, `userId`, `questionId`, `argumentId`, `vote`, `dateAdded`)
                         VALUES (NULL, '".i($user->getUserId())."', '".i($questionId)."', '".i($argumentId)."', '".i($vote)."', '".time()."');");
+
+            if(!$user->isLoggedIn())
+            {
+                $cookieData[$questionId][$argumentId] = $vote;
+            }
         }
 
         $this->updateQuestionStats($questionId);
+
+        if(!$user->isLoggedIn())
+        {
+            setcookie("voteData", serialize($cookieData));
+        }
 
         return true;
     }
@@ -225,6 +321,11 @@ class StatisticsMgr
     */
     private function lazyUpdateUserStats($questionId, $argumentId, $vote, $userId)
     {
+        global $sUser;
+        if($sUser->getUserId() == 0)
+        {
+            return;
+        }
         global $sDB, $sQuery, $sUser;
 
         $res = $sDB->exec("SELECT * FROM `user_votes` WHERE `userId` = '".i($sUser->getUserId())."' AND `questionId` = '".i($questionId)."' AND `argumentId` = '".i($argumentId)."';");
@@ -240,10 +341,10 @@ class StatisticsMgr
 
         if($argumentId)
         {
-            $sDB->exec("UPDATE `users` SET `scoreArguments` = `scoreArguments` + ".i($inc)." WHERE `userId` = '".i($userId)."' LIMIT 1;");
+            $sDB->execUsers("UPDATE `users` SET `scoreArguments` = `scoreArguments` + ".i($inc)." WHERE `userId` = '".i($userId)."' LIMIT 1;");
         }else
         {
-            $sDB->exec("UPDATE `users` SET `scoreQuestions` = `scoreQuestions` + ".i($inc)." WHERE `userId` = '".i($userId)."' LIMIT 1;");
+            $sDB->execUsers("UPDATE `users` SET `scoreQuestions` = `scoreQuestions` + ".i($inc)." WHERE `userId` = '".i($userId)."' LIMIT 1;");
         }
     }
 

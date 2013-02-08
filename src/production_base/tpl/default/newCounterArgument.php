@@ -50,8 +50,8 @@ drawArgumentBoxExtended($sPage->getQuestion(), $sPage->getView(), $sPage->basePa
         <div class = "row">
           <div class = "label"><? echo $sTemplate->getString("NEW_ARGUMENT_HEADLINE"); ?></div>
           <div class = "input">
-            <textarea id = "new_argument_headline" name = "new_argument_headline" maxlength="<? echo MAX_ARGUMENT_CHR_LENGTH;?>"></textarea>
-            <span class="characters_left"><span id="argument_headline_chars_left"><? echo MAX_ARGUMENT_CHR_LENGTH;?></span> <? echo $sTemplate->getString("CHARS_WRITTEN_LEFT"); ?></span>
+            <textarea id = "new_argument_headline" name = "new_argument_headline" maxlength="<? echo MAX_ARGUMENT_HEADLINE_CHR_LENGTH;?>"></textarea>
+            <span class="characters_left"><span id="argument_headline_chars_left"><? echo MAX_ARGUMENT_HEADLINE_CHR_LENGTH;?></span> <? echo $sTemplate->getString("CHARS_WRITTEN_LEFT"); ?></span>
           </div>
           <div class="clearfix"></div>
         </div>
@@ -69,13 +69,13 @@ drawArgumentBoxExtended($sPage->getQuestion(), $sPage->getView(), $sPage->basePa
           <div class = "label"><? echo $sTemplate->getString("NEW_ARGUMENT_DETAILS"); ?></div>
           <div class = "input">
             <textarea id = "new_argument_details" name = "new_argument_details"></textarea>
-                <span class="characters_written"><span id="argument_details_chars_written">0</span> chars written</span>
+                <span class="characters_written"><span id="argument_details_chars_written">0</span> <? echo $sTemplate->getString("CHARS_WRITTEN_LEFT"); ?></span>
           </div>
           <div class="clearfix"></div>
         </div>
 
         <div class = "row row_submit">
-          <span class = "button_orange" onclick = "wikiarguments.submitArgument('#new_counter_argument'); return false;"><? echo $sTemplate->getString("SUBMIT_NEW_ARGUMENT"); ?></span>
+          <button class = "button_orange" id = "buttonSubmit" onclick = "wikiargument.submitArgument('#new_counter_argument', '#buttonSubmit'); return false;"><? echo $sTemplate->getString("SUBMIT_NEW_ARGUMENT"); ?></button>
         </div>
       </div>
       <input type = "hidden" name = "new_counter_argument" value = "1" />

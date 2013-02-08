@@ -106,12 +106,27 @@ class Argument
 
     public function abstractText()
     {
-        return nl2br(htmlspecialchars($this->abstract));
+        return htmlspecialchars($this->abstract);
     }
 
     public function details()
     {
         return nl2br(htmlspecialchars($this->details));
+    }
+
+    public function headlinePlain()
+    {
+        return $this->headline;
+    }
+
+    public function abstractTextPlain()
+    {
+        return $this->abstract;
+    }
+
+    public function detailsPlain()
+    {
+        return $this->details;
     }
 
     public function dateAdded()
@@ -211,12 +226,48 @@ class Argument
     public function authorLink()
     {
         global $sTemplate;
+
+        if($this->userId == 0)
+        {
+            return htmlspecialchars($this->username);
+        }
         return "<a href = '".$sTemplate->getProfileLink($this->userId)."'>".htmlspecialchars($this->username)."</a>";
     }
 
     public function author()
     {
         return $this->username;
+    }
+
+    /*
+    * Returns true iff $user can edit this question.
+    */
+    public function canEdit(User $user)
+    {
+        if(!$this->userId() || $this->userId() != $user->getUserId())
+        {
+            return false;
+        }
+
+        if($this->dateAdded() <= time() - ARGUMENT_EDIT_INTERVAL)
+        {
+            return false;
+        }
+
+        if(count($this->arguments()))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /*
+    * Return time left for edit in minutes
+    */
+    public function timeLeftEdit()
+    {
+        return ceil((ARGUMENT_EDIT_INTERVAL - time() + $this->dateAdded()) / 60);
     }
 
     private $argumentId;

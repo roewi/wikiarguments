@@ -38,7 +38,7 @@ header("Content-Type: text/javascript");
 $(document).ready(function(){
 $("#new_argument_headline").bind("keyup", function(){
 
-$("#argument_headline_chars_left").text(<? echo MAX_ARGUMENT_CHR_LENGTH;?>-$(this).val().length);
+$("#argument_headline_chars_left").text(<? echo MAX_ARGUMENT_HEADLINE_CHR_LENGTH;?>-$(this).val().length);
 });
 
 
@@ -53,7 +53,7 @@ $("#argument_details_chars_written").text($(this).val().length);
 
 
 $(".clear_argument_form").bind("click", function(){
-$("#argument_headline_chars_left").text(<? echo MAX_ARGUMENT_CHR_LENGTH;?>);
+$("#argument_headline_chars_left").text(<? echo MAX_ARGUMENT_HEADLINE_CHR_LENGTH;?>);
 $("#argument_headline_abs_chars_left").text(<? echo MAX_ARGUMENT_ABS_CHR_LENGTH;?>);
 $("#argument_details_chars_written").text("0");
 $('.new_argument textarea').val('');
@@ -79,10 +79,25 @@ $("#new_question_title").bind("keyup", function(){
 $("#new_question_title_chars_left").text(<? echo MAX_QUESTION_CHR_LENGTH;?>-$(this).val().length);
 });
 
+$("#new_question_tags").bind("keyup", function(){
+
+$("#new_question_tags_chars_left").text(<? echo MAX_TAGS_CHR_LENGTH;?>-$(this).val().length);
+});
+
 $("#new_question_details").bind("keyup", function(){
 $("#new_question_details_chars_left").text($(this).val().length);
 });
 }
+
+if($("#form_new_group").length>0){
+
+$("#new_group_title").bind("keyup", function(){
+
+$("#new_group_title_chars_left").text(<? echo MAX_GROUP_NAME_CHR_LENGTH;?>-$(this).val().length);
+});
+}
+
+wikiargument.enforceInputlength();
 
 });
 

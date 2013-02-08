@@ -36,7 +36,7 @@ class PageError extends PageDefault
 {
     public function PageError($errorString, $template = "default.php", $title = "Error")
     {
-        global $sDB, $sRequest;
+        global $sDB, $sRequest, $sUser;
 
         $row = new stdClass();
         $row->templateFile = $template;

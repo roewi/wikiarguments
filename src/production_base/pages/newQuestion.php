@@ -36,7 +36,7 @@ class PageNewQuestion extends Page
 {
     public function PageNewQuestion($row)
     {
-        global $sDB, $sRequest;
+        global $sDB, $sRequest, $sQuery, $sUser;
         parent::Page($row);
         $this->view     = VIEW_NEW_QUESTION;
 
@@ -71,6 +71,12 @@ class PageNewQuestion extends Page
             return false;
         }
 
+        if($this->group && $this->group->getPermission($sUser, ACTION_NEW_QUESTION) == PERMISSION_DISALLOWED)
+        {
+            $this->setError($sTemplate->getString("NOTICE_NEW_QUESTION_NO_PERMISSION"));
+            return false;
+        }
+
 
         return true;
     }
@@ -84,13 +90,24 @@ class PageNewQuestion extends Page
             return false;
         }
 
-        $question       = substr($sRequest->getStringPlain("new_question_title"), 0, 160);
-        $tagsRaw        = $sRequest->getStringPlain("new_question_tags");
+        $question       = substr($sRequest->getStringPlain("new_question_title"), 0, MAX_QUESTION_CHR_LENGTH);
+        $tagsRaw        = substr($sRequest->getStringPlain("new_question_tags"), 0, MAX_TAGS_CHR_LENGTH);
         $details        = $sRequest->getStringPlain("new_question_details");
+        $type           = $sRequest->getInt("new_question_type");
+        $flags          = $sRequest->getInt("new_question_flags");
 
-        $questionParsed = preg_replace("/[^0-9a-zÄÖÜäöüáàâéèêíìîóòôúùû\[\]\{\} -]/i", "", $question);
+        validateQuestionType($type);
+        validateQuestionFlags($flags);
 
-        if($question == "")
+        if($type == QUESTION_TYPE_LISTED)
+        {
+            $flags = 0;
+        }
+
+
+        $questionParsed = preg_replace("/[^0-9a-zÄÖÜäöüßáàâéèêíìîóòôúùû\[\]\{\} -]/i", "", $question);
+
+        if($question == "" || $questionParsed == "")
         {
             $this->setError($sTemplate->getString("ERROR_NEW_QUESTION_INVALID_QUESTION"));
 
@@ -104,10 +121,10 @@ class PageNewQuestion extends Page
         $tags = array_merge($tags, $this->tagsByString(str_replace(" ", ",", $question)));
         $tags = $this->filterTags($tags);
 
-        return $this->store($question, $questionParsed, $tags, $details, $tagsNoQuestion);
+        return $this->store($question, $questionParsed, $tags, $details, $tagsNoQuestion, $type, $flags);
     }
 
-    private function store($question, $questionParsed, $tags, $details, $tagsNoQuestion)
+    private function store($question, $questionParsed, $tags, $details, $tagsNoQuestion, $type, $flags)
     {
         global $sDB, $sUser, $sTemplate;
 
@@ -138,9 +155,9 @@ class PageNewQuestion extends Page
         $additionalData->numCheckIns = 0;
         $additionalData->tags        = array_unique($tagsNoQuestion);
 
-        $sDB->exec("INSERT INTO `questions` (`questionId`, `title`, `url`, `details`, `dateAdded`, `userId`, `score`, `scoreTrending`, `scoreTop`, `additionalData`) VALUES
+        $sDB->exec("INSERT INTO `questions` (`questionId`, `title`, `url`, `details`, `dateAdded`, `userId`, `score`, `scoreTrending`, `scoreTop`, `additionalData`, `groupId`, `type`, `flags`) VALUES
                                             (NULL, '".mysql_real_escape_string($question)."', '".mysql_real_escape_string($url)."', '".mysql_real_escape_string($details)."',
-                                             '".time()."', '".$sUser->getUserId()."', '0', '0', '0', '".serialize($additionalData)."');");
+                                             '".time()."', '".$sUser->getUserId()."', '0', '0', '0', '".serialize($additionalData)."', '".i($this->groupId)."', '".i($type)."', '".i($flags)."');");
 
         $questionId = mysql_insert_id();
 
@@ -152,10 +169,24 @@ class PageNewQuestion extends Page
 
         foreach($tags as $k => $v)
         {
-            $sDB->exec("INSERT INTO `tags` (`tagId`, `questionId`, `tag`) VALUES(NULL, '".i($questionId)."', '".mysql_real_escape_string($v)."');");
+            $sDB->exec("INSERT INTO `tags` (`tagId`, `questionId`, `tag`, `groupId`) VALUES(NULL, '".i($questionId)."', '".mysql_real_escape_string($v)."', '".i($this->groupId)."');");
         }
 
-        $this->redirectUrl = $sTemplate->getRoot().$url."/";
+        if($this->group)
+        {
+            $this->redirectUrl = $sTemplate->getRoot()."groups/".$this->group->url()."/".$url."/";
+        }else
+        {
+            if($flags & QUESTION_FLAG_PART_ALL)
+            {
+                $url = "unregistered/".$url;
+            }
+            if($type == QUESTION_TYPE_UNLISTED)
+            {
+                $url = "unlisted/".$url;
+            }
+            $this->redirectUrl = $sTemplate->getRoot().$url."/";
+        }
 
         return $questionId;
     }
@@ -176,7 +207,7 @@ class PageNewQuestion extends Page
 
         foreach($tagsRaw as $k => $v)
         {
-            $v = preg_replace('/[^a-z0-9ÄÖÜöäüáàâéèêíìîóòôúùû\[\]\{\}_-]/i', '', $v);
+            $v = preg_replace('/[^a-z0-9ÄÖÜöäüáàâéèêíìîóòôúùûß\[\]\{\}_-]/i', '', $v);
             $v = trim($v, "-");
 
             if($v != "")
@@ -192,6 +223,18 @@ class PageNewQuestion extends Page
     {
         global $sTemplate;
         return $sTemplate->getString("HTML_META_TITLE_NEW_QUESTION");
+    }
+
+    public function getFormUrl()
+    {
+        global $sTemplate;
+
+        if($this->group)
+        {
+            return $sTemplate->getRoot()."groups/".$this->group->url()."/new-question/";
+        }
+
+        return $sTemplate->getRoot()."new-question/";
     }
 
     private $view;

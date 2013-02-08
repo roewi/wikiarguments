@@ -58,6 +58,9 @@ class SessionMgr
         {
             $this->m_sessionID = md5('DATA'.mt_rand().time().$_SERVER['REMOTE_ADDR'].'SID'.mt_rand());
             setcookie("wikiargument_session", $this->m_sessionID, time() + 60*60*24*30, "/");
+
+            $sMD->set('session', '', $this->m_sessionID, false);
+            $sDB->exec("DELETE FROM `sessions` WHERE `sessionId` = '".mysql_real_escape_string($this->m_sessionID)."' LIMIT 1;");
         }
 
         // try memcached
@@ -79,6 +82,7 @@ class SessionMgr
                 $this->m_sessionData['storageData']['lastSQLSync'] = 0;
                 $this->m_sessionData['data'] = Array();
                 $this->m_sessionData['data']['lastAction'] = time();
+                $sMD->set('session', '', $this->m_sessionID, $this->m_sessionData);
             }
         }
 

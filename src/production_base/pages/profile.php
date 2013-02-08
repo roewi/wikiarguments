@@ -36,7 +36,7 @@ class PageProfile extends Page
 {
     public function PageProfile($row)
     {
-        global $sDB, $sRequest, $sQuery, $sTemplate;
+        global $sDB, $sRequest, $sQuery, $sTemplate, $sUser;
         parent::Page($row);
 
         $this->userId = $sRequest->getInt("userId");
